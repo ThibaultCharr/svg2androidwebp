@@ -67,15 +67,16 @@ def _ask_text(title, message, placeholder="", preview_path=None):
 
 def _ask_module_path():
     alert = NSAlert.alloc().init()
-    alert.setMessageText_("Android Module Path")
+    alert.setMessageText_("Android Module Root")
     alert.setInformativeText_(
-        "Type or paste the module path, or leave blank and click Browse to choose in Finder:"
+        "Select the module root folder (the one that contains src/main/res/).\n"
+        "Type or paste the path, or leave blank and click Browse to choose in Finder:"
     )
     alert.addButtonWithTitle_("Next")    # 1000
     alert.addButtonWithTitle_("Browse…") # 1001
     alert.addButtonWithTitle_("Cancel")  # 1002
     field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 380, 24))
-    field.setPlaceholderString_("e.g. libraries/MyModule/impl")
+    field.setPlaceholderString_("e.g. libraries/MyModule/impl  (not the res/ folder)")
     alert.setAccessoryView_(field)
     alert.window().setInitialFirstResponder_(field)
     response = alert.runModal()
@@ -89,7 +90,7 @@ def _ask_module_path():
     return _pick_file(
         "Select Android module folder",
         choose_dirs=True,
-        message="Choose the Android module folder (containing src/main/res/)",
+        message="Choose the module root folder — the one that contains src/main/res/ (do NOT select the res/ folder itself)",
         prompt="Select Module",
     )
 
