@@ -4,7 +4,7 @@ macOS menubar app that converts an SVG file into WebP images for all 5 Android d
 
 ## Requirements
 
-- Python 3
+- Python 3.7+
 - `brew install librsvg webp`
 - `pip install -r requirements.txt`
 
