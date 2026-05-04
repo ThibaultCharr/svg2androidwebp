@@ -59,9 +59,10 @@ def detect_dimensions(svg_path):
     raise ValueError("Could not detect SVG dimensions.")
 
 
-def convert(svg_path, icon_name, module_path):
+def convert(svg_path, icon_name, module_path, width=None, height=None):
     """
     Converts svg_path to WebP for all 5 Android densities.
+    width/height: source dimensions in px (detected from SVG if not provided).
     SVG dimensions treated as hdpi (1.5x) baseline.
     Raises RuntimeError on any failure.
     """
@@ -86,10 +87,11 @@ def convert(svg_path, icon_name, module_path):
             "Use only lowercase letters, digits, underscores, and dots."
         )
 
-    try:
-        width, height = detect_dimensions(svg_path)
-    except ValueError as e:
-        raise RuntimeError(str(e))
+    if width is None or height is None:
+        try:
+            width, height = detect_dimensions(svg_path)
+        except ValueError as e:
+            raise RuntimeError(str(e))
 
     res_dir = os.path.join(module_path, "src", "main", "res")
 
