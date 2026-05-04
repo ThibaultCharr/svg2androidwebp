@@ -1,4 +1,7 @@
 .venv/
+.venv312/
 __pycache__/
 *.pyc
 .claude/
+build/
+dist/
