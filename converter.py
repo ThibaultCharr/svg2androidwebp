@@ -78,6 +78,9 @@ def convert(svg_path, icon_name, module_path):
     if not os.path.isdir(module_path):
         raise RuntimeError(f"Error: Module path not found: {module_path}")
 
+    if not icon_name or os.sep in icon_name or (os.altsep and os.altsep in icon_name):
+        raise RuntimeError(f"Error: invalid icon name: {icon_name!r}")
+
     try:
         width, height = detect_dimensions(svg_path)
     except ValueError as e:
@@ -86,8 +89,8 @@ def convert(svg_path, icon_name, module_path):
     res_dir = os.path.join(module_path, "src", "main", "res")
 
     for density, num, den in DENSITIES:
-        w = width * num // den
-        h = height * num // den
+        w = max(1, width * num // den)
+        h = max(1, height * num // den)
         out_dir = os.path.join(res_dir, f"drawable-{density}")
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{icon_name}.webp")
@@ -97,7 +100,7 @@ def convert(svg_path, icon_name, module_path):
             capture_output=True,
         )
         if rsvg.returncode != 0:
-            raise RuntimeError(rsvg.stderr.decode().strip())
+            raise RuntimeError(rsvg.stderr.decode().strip() or f"rsvg-convert failed (exit {rsvg.returncode})")
 
         cwebp = subprocess.run(
             ["cwebp", "-lossless", "-o", out_path, "--", "-"],
@@ -105,7 +108,7 @@ def convert(svg_path, icon_name, module_path):
             capture_output=True,
         )
         if cwebp.returncode != 0:
-            raise RuntimeError(cwebp.stderr.decode().strip())
+            raise RuntimeError(cwebp.stderr.decode().strip() or f"cwebp failed (exit {cwebp.returncode})")
 
     return f"Done! All densities generated for '{icon_name}'."
 
