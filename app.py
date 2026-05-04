@@ -8,7 +8,7 @@ from AppKit import (
 
 from converter import convert, BASELINES
 
-PREVIEW_SIZE = 160
+PREVIEW_H = 160
 
 
 def _pick_file(title, allowed_types=None, choose_dirs=False, message=None, prompt=None):
@@ -26,45 +26,6 @@ def _pick_file(title, allowed_types=None, choose_dirs=False, message=None, promp
     return panel.URL().path() if panel.runModal() == 1 else None
 
 
-def _ask_text(title, message, placeholder="", preview_path=None):
-    alert = NSAlert.alloc().init()
-    alert.setMessageText_(title)
-    alert.setInformativeText_(message)
-    alert.addButtonWithTitle_("Next")
-    alert.addButtonWithTitle_("Cancel")
-
-    width = 380
-    field_h = 24
-    gap = 8
-
-    if preview_path:
-        # Container view: image preview on top, text field below
-        total_h = PREVIEW_SIZE + gap + field_h
-        container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, width, total_h))
-
-        img_view = NSImageView.alloc().initWithFrame_(
-            NSMakeRect(0, field_h + gap, width, PREVIEW_SIZE)
-        )
-        image = NSImage.alloc().initWithContentsOfFile_(preview_path)
-        if image:
-            img_view.setImage_(image)
-            img_view.setImageScaling_(NSImageScaleProportionallyUpOrDown)
-        container.addSubview_(img_view)
-
-        field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, width, field_h))
-        container.addSubview_(field)
-        alert.setAccessoryView_(container)
-    else:
-        field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, width, field_h))
-        alert.setAccessoryView_(field)
-
-    if placeholder:
-        field.setPlaceholderString_(placeholder)
-    alert.window().setInitialFirstResponder_(field)
-    # NSAlertFirstButtonReturn = 1000
-    return field.stringValue().strip() if alert.runModal() == 1000 else None
-
-
 def _make_label(text, x, y, w, h):
     label = NSTextField.alloc().initWithFrame_(NSMakeRect(x, y, w, h))
     label.setStringValue_(text)
@@ -75,91 +36,124 @@ def _make_label(text, x, y, w, h):
     return label
 
 
-def _ask_dimensions(svg_path):
+def _ask_icon_details(svg_path):
     """
-    Returns (width, height) or (None, None) to use SVG size.
-    Returns False if cancelled.
+    Single dialog: SVG preview, icon name, optional custom dimensions, baseline.
+    Returns (icon_name, width, height, baseline) or None if cancelled.
+    width/height are None to use SVG-detected dimensions.
     """
     from converter import detect_dimensions
+
     detected = None
     try:
         detected = detect_dimensions(svg_path)
     except Exception:
         pass
 
-    alert = NSAlert.alloc().init()
-    alert.setMessageText_("Source Dimensions (hdpi baseline)")
-    info = "The SVG dimensions are used as the hdpi (1.5x) baseline for all density outputs."
-    if detected:
-        info += f"\n\nDetected size: {detected[0]}×{detected[1]} px."
-    alert.setInformativeText_(info)
-    alert.addButtonWithTitle_("Use SVG Size")   # 1000
-    alert.addButtonWithTitle_("Enter Manually") # 1001
-    alert.addButtonWithTitle_("Cancel")         # 1002
+    W = 420
+    GAP = 8
+    FIELD_H = 24
+    LABEL_H = 18
 
-    response = alert.runModal()
-    if response == 1002:
-        return False
-    if response == 1000:
-        return None, None  # use SVG size
+    # Layout: build from bottom (y=0) upward
+    y = 0
 
-    # Manual entry — show a second dialog with two fields
-    alert2 = NSAlert.alloc().init()
-    alert2.setMessageText_("Enter Source Dimensions")
-    alert2.setInformativeText_("Enter the width and height in pixels for the hdpi (1.5x) baseline:")
-    alert2.addButtonWithTitle_("Next")   # 1000
-    alert2.addButtonWithTitle_("Cancel") # 1001
+    # Baseline row (bottom)
+    baseline_y = y
+    y += 26 + GAP
 
-    container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 260, 56))
+    # Dimensions row
+    dims_label_y = y
+    y += LABEL_H + 4
+    dims_field_y = y
+    y += FIELD_H + GAP
 
-    container.addSubview_(_make_label("Width (px):", 0, 32, 90, 20))
-    w_field = NSTextField.alloc().initWithFrame_(NSMakeRect(95, 32, 80, 24))
-    if detected:
-        w_field.setStringValue_(str(detected[0]))
+    # Icon name row
+    name_label_y = y
+    y += LABEL_H + 4
+    name_field_y = y
+    y += FIELD_H + GAP
+
+    # Preview (top)
+    preview_y = y
+    y += PREVIEW_H
+
+    container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W, y))
+
+    # SVG preview
+    img_view = NSImageView.alloc().initWithFrame_(NSMakeRect(0, preview_y, W, PREVIEW_H))
+    image = NSImage.alloc().initWithContentsOfFile_(svg_path)
+    if image:
+        img_view.setImage_(image)
+        img_view.setImageScaling_(NSImageScaleProportionallyUpOrDown)
+    container.addSubview_(img_view)
+
+    # Icon name
+    container.addSubview_(_make_label("Icon name:", 0, name_label_y, W, LABEL_H))
+    name_field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, name_field_y, W, FIELD_H))
+    name_field.setPlaceholderString_("e.g. ic_home_euro_coin")
+    container.addSubview_(name_field)
+
+    # Dimensions
+    dim_hint = f"detected: {detected[0]}×{detected[1]} px" if detected else "leave blank to read from SVG"
+    container.addSubview_(_make_label(
+        f"Source dimensions in px ({dim_hint}):",
+        0, dims_label_y, W, LABEL_H,
+    ))
+    w_field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, dims_field_y, 80, FIELD_H))
+    w_field.setPlaceholderString_("Width")
     container.addSubview_(w_field)
-
-    container.addSubview_(_make_label("Height (px):", 0, 4, 90, 20))
-    h_field = NSTextField.alloc().initWithFrame_(NSMakeRect(95, 4, 80, 24))
-    if detected:
-        h_field.setStringValue_(str(detected[1]))
+    container.addSubview_(_make_label("×", 86, dims_field_y + 3, 14, LABEL_H))
+    h_field = NSTextField.alloc().initWithFrame_(NSMakeRect(104, dims_field_y, 80, FIELD_H))
+    h_field.setPlaceholderString_("Height")
     container.addSubview_(h_field)
+    container.addSubview_(_make_label(
+        "(leave blank to use SVG size)", 196, dims_field_y + 3, 224, LABEL_H,
+    ))
 
-    alert2.setAccessoryView_(container)
-    alert2.window().setInitialFirstResponder_(w_field)
-
-    if alert2.runModal() != 1000:
-        return False
-    try:
-        w = int(float(w_field.stringValue().strip()))
-        h = int(float(h_field.stringValue().strip()))
-        if w <= 0 or h <= 0:
-            raise ValueError
-        return w, h
-    except (ValueError, Exception):
-        _show_result("Error", "Invalid dimensions. Please enter positive integers.")
-        return False
-
-
-def _ask_baseline():
-    """Returns the chosen baseline density string, or None if cancelled."""
-    alert = NSAlert.alloc().init()
-    alert.setMessageText_("Baseline Density")
-    alert.setInformativeText_(
-        "Which density do your source dimensions represent?\n\n"
-        "hdpi (1.5×) is the most common choice for hand-drawn SVGs."
-    )
-    alert.addButtonWithTitle_("Next")   # 1000
-    alert.addButtonWithTitle_("Cancel") # 1001
-
-    popup = NSPopUpButton.alloc().initWithFrame_(NSMakeRect(0, 0, 200, 26))
-    for density in BASELINES:
-        popup.addItemWithTitle_(density)
+    # Baseline density
+    container.addSubview_(_make_label("Baseline density:", 0, baseline_y + 3, 130, LABEL_H))
+    popup = NSPopUpButton.alloc().initWithFrame_(NSMakeRect(135, baseline_y, 180, 26))
+    for d in BASELINES:
+        popup.addItemWithTitle_(d)
     popup.selectItemWithTitle_("hdpi")
-    alert.setAccessoryView_(popup)
+    container.addSubview_(popup)
+
+    alert = NSAlert.alloc().init()
+    alert.setMessageText_("Icon Details")
+    alert.setInformativeText_("Configure the Android resource name and conversion settings:")
+    alert.addButtonWithTitle_("Next")    # 1000
+    alert.addButtonWithTitle_("Cancel")  # 1001
+    alert.setAccessoryView_(container)
+    alert.window().setInitialFirstResponder_(name_field)
 
     if alert.runModal() != 1000:
         return None
-    return popup.titleOfSelectedItem()
+
+    icon_name = name_field.stringValue().strip()
+    if not icon_name:
+        _show_result("Error", "Icon name cannot be empty.")
+        return None
+
+    w_str = w_field.stringValue().strip()
+    h_str = h_field.stringValue().strip()
+    custom_w = custom_h = None
+
+    if w_str or h_str:
+        if not (w_str and h_str):
+            _show_result("Error", "Please enter both width and height, or leave both blank to use the SVG size.")
+            return None
+        try:
+            custom_w = int(float(w_str))
+            custom_h = int(float(h_str))
+            if custom_w <= 0 or custom_h <= 0:
+                raise ValueError
+        except ValueError:
+            _show_result("Error", "Invalid dimensions. Please enter positive integers.")
+            return None
+
+    baseline = popup.titleOfSelectedItem()
+    return icon_name, custom_w, custom_h, baseline
 
 
 def _ask_module_path():
@@ -183,7 +177,6 @@ def _ask_module_path():
     typed = field.stringValue().strip()
     if response == 1000 and typed:
         return typed
-    # Browse (1001) or Next with empty field → open Finder
     return _pick_file(
         "Select Android module folder",
         choose_dirs=True,
@@ -214,23 +207,10 @@ def main():
     if not svg_path:
         return
 
-    icon_name = _ask_text(
-        "Icon Name",
-        "Enter the Android resource name:",
-        placeholder="e.g. ic_home_euro_coin",
-        preview_path=svg_path,
-    )
-    if not icon_name:
+    result = _ask_icon_details(svg_path)
+    if result is None:
         return
-
-    dims = _ask_dimensions(svg_path)
-    if dims is False:
-        return
-    custom_w, custom_h = dims if dims != (None, None) else (None, None)
-
-    baseline = _ask_baseline()
-    if baseline is None:
-        return
+    icon_name, custom_w, custom_h, baseline = result
 
     module_path = _ask_module_path()
     if not module_path:
