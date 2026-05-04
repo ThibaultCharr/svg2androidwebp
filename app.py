@@ -3,8 +3,12 @@
 from AppKit import (
     NSApplication, NSOpenPanel, NSAlert, NSTextField, NSMakeRect,
     NSImage, NSImageView, NSImageScaleProportionallyUpOrDown,
-    NSView, NSPopUpButton,
+    NSView, NSPopUpButton, NSButton,
 )
+from Foundation import NSObject
+
+NSOnState = 1
+NSOffState = 0
 
 from converter import convert, BASELINES
 
@@ -36,11 +40,25 @@ def _make_label(text, x, y, w, h):
     return label
 
 
+class _ToggleHandler(NSObject):
+    """Handles the 'Use SVG size' checkbox toggle to enable/disable dimension fields."""
+
+    def initWithFields_(self, fields):
+        self = super().init()
+        self._fields = fields
+        return self
+
+    def toggle_(self, sender):
+        enabled = sender.state() == NSOffState
+        for f in self._fields:
+            f.setEnabled_(enabled)
+
+
 def _ask_icon_details(svg_path):
     """
-    Single dialog: SVG preview, icon name, optional custom dimensions, baseline.
+    Single dialog: SVG preview, icon name, dimension toggle + fields, baseline.
     Returns (icon_name, width, height, baseline) or None if cancelled.
-    width/height are None to use SVG-detected dimensions.
+    width/height are None when 'Use SVG size' is checked.
     """
     from converter import detect_dimensions
 
@@ -62,10 +80,12 @@ def _ask_icon_details(svg_path):
     baseline_y = y
     y += 26 + GAP
 
-    # Dimensions row
-    dims_label_y = y
-    y += LABEL_H + 4
+    # Dimension fields row
     dims_field_y = y
+    y += FIELD_H + 4
+
+    # "Use SVG size" checkbox row
+    checkbox_y = y
     y += FIELD_H + GAP
 
     # Icon name row
@@ -94,22 +114,33 @@ def _ask_icon_details(svg_path):
     name_field.setPlaceholderString_("e.g. ic_home_euro_coin")
     container.addSubview_(name_field)
 
-    # Dimensions
-    dim_hint = f"detected: {detected[0]}×{detected[1]} px" if detected else "leave blank to read from SVG"
-    container.addSubview_(_make_label(
-        f"Source dimensions in px ({dim_hint}):",
-        0, dims_label_y, W, LABEL_H,
-    ))
-    w_field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, dims_field_y, 80, FIELD_H))
-    w_field.setPlaceholderString_("Width")
+    # "Use SVG size" checkbox (checked = use SVG, unchecked = manual)
+    checkbox = NSButton.alloc().initWithFrame_(NSMakeRect(0, checkbox_y, W, FIELD_H))
+    checkbox.setButtonType_(3)  # NSSwitchButton
+    svg_size_label = f"Use SVG size ({detected[0]}×{detected[1]} px)" if detected else "Use SVG size"
+    checkbox.setTitle_(svg_size_label)
+    checkbox.setState_(NSOnState)
+    container.addSubview_(checkbox)
+
+    # Dimension fields (disabled by default since checkbox is ON)
+    w_field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, dims_field_y, 90, FIELD_H))
+    w_field.setPlaceholderString_("Width (px)")
+    w_field.setEnabled_(False)
     container.addSubview_(w_field)
-    container.addSubview_(_make_label("×", 86, dims_field_y + 3, 14, LABEL_H))
-    h_field = NSTextField.alloc().initWithFrame_(NSMakeRect(104, dims_field_y, 80, FIELD_H))
-    h_field.setPlaceholderString_("Height")
+    container.addSubview_(_make_label("×", 96, dims_field_y + 3, 14, LABEL_H))
+    h_field = NSTextField.alloc().initWithFrame_(NSMakeRect(114, dims_field_y, 90, FIELD_H))
+    h_field.setPlaceholderString_("Height (px)")
+    h_field.setEnabled_(False)
     container.addSubview_(h_field)
-    container.addSubview_(_make_label(
-        "(leave blank to use SVG size)", 196, dims_field_y + 3, 224, LABEL_H,
-    ))
+    if detected:
+        container.addSubview_(_make_label(
+            f"(SVG: {detected[0]}×{detected[1]} px)", 214, dims_field_y + 3, 200, LABEL_H,
+        ))
+
+    # Wire checkbox → toggle handler
+    handler = _ToggleHandler.alloc().initWithFields_([w_field, h_field])
+    checkbox.setTarget_(handler)
+    checkbox.setAction_("toggle:")
 
     # Baseline density
     container.addSubview_(_make_label("Baseline density:", 0, baseline_y + 3, 130, LABEL_H))
@@ -135,13 +166,12 @@ def _ask_icon_details(svg_path):
         _show_result("Error", "Icon name cannot be empty.")
         return None
 
-    w_str = w_field.stringValue().strip()
-    h_str = h_field.stringValue().strip()
     custom_w = custom_h = None
-
-    if w_str or h_str:
+    if checkbox.state() == NSOffState:
+        w_str = w_field.stringValue().strip()
+        h_str = h_field.stringValue().strip()
         if not (w_str and h_str):
-            _show_result("Error", "Please enter both width and height, or leave both blank to use the SVG size.")
+            _show_result("Error", "Please enter both width and height.")
             return None
         try:
             custom_w = int(float(w_str))
