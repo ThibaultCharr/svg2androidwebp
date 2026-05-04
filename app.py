@@ -162,12 +162,15 @@ class SVG2AndroidWebPApp(rumps.App):
         # NOTE: tkinter runs off the main thread here because rumps owns the
         # main thread via NSRunLoop. This is a known macOS-Tk trade-off and
         # works reliably for this single-window use case.
-        root = tk.Tk()
-        root.withdraw()
-        self._window = ConversionWindow(root)
-        self._launching = False
-        root.mainloop()
-        self._window = None
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            self._window = ConversionWindow(root)
+            self._launching = False
+            root.mainloop()
+        finally:
+            self._launching = False
+            self._window = None
 
 
 if __name__ == "__main__":
