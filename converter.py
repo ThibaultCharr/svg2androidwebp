@@ -5,13 +5,16 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 
-DENSITIES = [
-    ("mdpi",     2, 3),
-    ("hdpi",     1, 1),
-    ("xhdpi",    4, 3),
-    ("xxhdpi",   2, 1),
-    ("xxxhdpi",  8, 3),
-]
+# Density scale factors relative to mdpi (1x baseline)
+DENSITY_SCALES = {
+    "mdpi":    1.0,
+    "hdpi":    1.5,
+    "xhdpi":   2.0,
+    "xxhdpi":  3.0,
+    "xxxhdpi": 4.0,
+}
+
+BASELINES = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]
 
 
 def check_dependencies():
@@ -59,11 +62,11 @@ def detect_dimensions(svg_path):
     raise ValueError("Could not detect SVG dimensions.")
 
 
-def convert(svg_path, icon_name, module_path, width=None, height=None):
+def convert(svg_path, icon_name, module_path, width=None, height=None, baseline="hdpi"):
     """
     Converts svg_path to WebP for all 5 Android densities.
     width/height: source dimensions in px (detected from SVG if not provided).
-    SVG dimensions treated as hdpi (1.5x) baseline.
+    baseline: which density the source dimensions represent (default: hdpi).
     Raises RuntimeError on any failure.
     """
     missing = check_dependencies()
@@ -93,11 +96,15 @@ def convert(svg_path, icon_name, module_path, width=None, height=None):
         except ValueError as e:
             raise RuntimeError(str(e))
 
+    if baseline not in DENSITY_SCALES:
+        raise RuntimeError(f"Error: unknown baseline density: {baseline!r}")
+
+    baseline_scale = DENSITY_SCALES[baseline]
     res_dir = os.path.join(module_path, "src", "main", "res")
 
-    for density, num, den in DENSITIES:
-        w = max(1, width * num // den)
-        h = max(1, height * num // den)
+    for density, scale in DENSITY_SCALES.items():
+        w = max(1, round(width * scale / baseline_scale))
+        h = max(1, round(height * scale / baseline_scale))
         out_dir = os.path.join(res_dir, f"drawable-{density}")
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{icon_name}.webp")

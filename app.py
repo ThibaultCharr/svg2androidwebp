@@ -3,10 +3,10 @@
 from AppKit import (
     NSApplication, NSOpenPanel, NSAlert, NSTextField, NSMakeRect,
     NSImage, NSImageView, NSImageScaleProportionallyUpOrDown,
-    NSView,
+    NSView, NSPopUpButton,
 )
 
-from converter import convert
+from converter import convert, BASELINES
 
 PREVIEW_SIZE = 160
 
@@ -140,6 +140,28 @@ def _ask_dimensions(svg_path):
         return False
 
 
+def _ask_baseline():
+    """Returns the chosen baseline density string, or None if cancelled."""
+    alert = NSAlert.alloc().init()
+    alert.setMessageText_("Baseline Density")
+    alert.setInformativeText_(
+        "Which density do your source dimensions represent?\n\n"
+        "hdpi (1.5×) is the most common choice for hand-drawn SVGs."
+    )
+    alert.addButtonWithTitle_("Next")   # 1000
+    alert.addButtonWithTitle_("Cancel") # 1001
+
+    popup = NSPopUpButton.alloc().initWithFrame_(NSMakeRect(0, 0, 200, 26))
+    for density in BASELINES:
+        popup.addItemWithTitle_(density)
+    popup.selectItemWithTitle_("hdpi")
+    alert.setAccessoryView_(popup)
+
+    if alert.runModal() != 1000:
+        return None
+    return popup.titleOfSelectedItem()
+
+
 def _ask_module_path():
     alert = NSAlert.alloc().init()
     alert.setMessageText_("Android Module Root")
@@ -206,12 +228,16 @@ def main():
         return
     custom_w, custom_h = dims if dims != (None, None) else (None, None)
 
+    baseline = _ask_baseline()
+    if baseline is None:
+        return
+
     module_path = _ask_module_path()
     if not module_path:
         return
 
     try:
-        msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h)
+        msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
         _show_result("Done", msg)
     except Exception as e:
         _show_result("Error", str(e))
