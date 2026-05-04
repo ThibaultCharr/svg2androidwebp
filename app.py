@@ -104,6 +104,7 @@ def _show_result(title, message):
 
 def main():
     app = NSApplication.sharedApplication()
+    app.setActivationPolicy_(0)  # NSApplicationActivationPolicyRegular — shows in Dock
     app.activateIgnoringOtherApps_(True)
 
     svg_path = _pick_file(
