@@ -4,7 +4,7 @@
 
 # svg2androidwebp
 
-macOS menubar app that converts an SVG file into WebP images for all 5 Android density buckets (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi).
+macOS app that converts an SVG file into WebP images for all 5 Android density buckets (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi). Runs as a native 3-step wizard and can be launched via Spotlight.
 
 ## Requirements
 
