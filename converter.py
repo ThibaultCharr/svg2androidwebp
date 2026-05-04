@@ -23,22 +23,26 @@ def detect_dimensions(svg_path):
     tree = ET.parse(svg_path)
     root = tree.getroot()
 
-    width = root.get("width", "")
-    height = root.get("height", "")
+    width_str = root.get("width", "")
+    height_str = root.get("height", "")
 
-    # Strip non-numeric characters (e.g. "24px" -> "24")
-    width = re.sub(r"[^0-9]", "", width)
-    height = re.sub(r"[^0-9]", "", height)
-
-    if width and height and width != "0" and height != "0":
-        return int(width), int(height)
+    if not width_str.endswith("%") and not height_str.endswith("%"):
+        try:
+            w = int(float(re.sub(r"[a-zA-Z]", "", width_str)))
+            h = int(float(re.sub(r"[a-zA-Z]", "", height_str)))
+            if w > 0 and h > 0:
+                return w, h
+        except ValueError:
+            pass
 
     # Fallback to viewBox="0 0 W H"
     viewbox = root.get("viewBox", "")
     parts = viewbox.strip().split()
     if len(parts) == 4:
         try:
-            return int(float(parts[2])), int(float(parts[3]))
+            w, h = int(float(parts[2])), int(float(parts[3]))
+            if w > 0 and h > 0:
+                return w, h
         except ValueError:
             pass
 
