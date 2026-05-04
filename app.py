@@ -90,9 +90,11 @@ class ConversionWindow:
         def run():
             try:
                 msg = convert(svg, name, module)
-                self.win.after(0, self._on_success, msg)
-            except RuntimeError as e:
-                self.win.after(0, self._on_error, str(e))
+                if self.winfo_exists():
+                    self.win.after(0, self._on_success, msg)
+            except Exception as e:
+                if self.winfo_exists():
+                    self.win.after(0, self._on_error, str(e))
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -135,6 +137,7 @@ class SVG2AndroidWebPApp(rumps.App):
         ]
         self._window = None
         self._window_lock = threading.Lock()
+        self._launching = False
 
     def open_window(self, _):
         if self._window is not None and self._window.winfo_exists():
@@ -142,11 +145,13 @@ class SVG2AndroidWebPApp(rumps.App):
             self._window.focus_force()
             return
         with self._window_lock:
-            # Re-check after acquiring lock to avoid double-launch
+            if self._launching:
+                return
             if self._window is not None and self._window.winfo_exists():
                 self._window.lift()
                 self._window.focus_force()
                 return
+            self._launching = True
             self._launch_window()
 
     def _launch_window(self):
@@ -160,6 +165,7 @@ class SVG2AndroidWebPApp(rumps.App):
         root = tk.Tk()
         root.withdraw()
         self._window = ConversionWindow(root)
+        self._launching = False
         root.mainloop()
         self._window = None
 
