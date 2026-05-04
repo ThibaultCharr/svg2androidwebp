@@ -2,9 +2,13 @@
 
 from AppKit import (
     NSApplication, NSOpenPanel, NSAlert, NSTextField, NSMakeRect,
+    NSImage, NSImageView, NSImageScaleProportionallyUpOrDown,
+    NSView,
 )
 
 from converter import convert
+
+PREVIEW_SIZE = 160
 
 
 def _pick_file(title, allowed_types=None, choose_dirs=False, message=None, prompt=None):
@@ -22,16 +26,40 @@ def _pick_file(title, allowed_types=None, choose_dirs=False, message=None, promp
     return panel.URL().path() if panel.runModal() == 1 else None
 
 
-def _ask_text(title, message, placeholder=""):
+def _ask_text(title, message, placeholder="", preview_path=None):
     alert = NSAlert.alloc().init()
     alert.setMessageText_(title)
     alert.setInformativeText_(message)
     alert.addButtonWithTitle_("Next")
     alert.addButtonWithTitle_("Cancel")
-    field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 320, 24))
+
+    width = 380
+    field_h = 24
+    gap = 8
+
+    if preview_path:
+        # Container view: image preview on top, text field below
+        total_h = PREVIEW_SIZE + gap + field_h
+        container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, width, total_h))
+
+        img_view = NSImageView.alloc().initWithFrame_(
+            NSMakeRect(0, field_h + gap, width, PREVIEW_SIZE)
+        )
+        image = NSImage.alloc().initWithContentsOfFile_(preview_path)
+        if image:
+            img_view.setImage_(image)
+            img_view.setImageScaling_(NSImageScaleProportionallyUpOrDown)
+        container.addSubview_(img_view)
+
+        field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, width, field_h))
+        container.addSubview_(field)
+        alert.setAccessoryView_(container)
+    else:
+        field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, width, field_h))
+        alert.setAccessoryView_(field)
+
     if placeholder:
         field.setPlaceholderString_(placeholder)
-    alert.setAccessoryView_(field)
     alert.window().setInitialFirstResponder_(field)
     # NSAlertFirstButtonReturn = 1000
     return field.stringValue().strip() if alert.runModal() == 1000 else None
@@ -91,6 +119,7 @@ def main():
         "Icon Name",
         "Enter the Android resource name:",
         placeholder="e.g. ic_home_euro_coin",
+        preview_path=svg_path,
     )
     if not icon_name:
         return
