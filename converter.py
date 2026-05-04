@@ -23,11 +23,6 @@ def detect_dimensions(svg_path):
     tree = ET.parse(svg_path)
     root = tree.getroot()
 
-    # Strip namespace if present: {http://www.w3.org/2000/svg}svg -> svg
-    ns = ""
-    if root.tag.startswith("{"):
-        ns = root.tag.split("}")[0] + "}"
-
     width = root.get("width", "")
     height = root.get("height", "")
 
