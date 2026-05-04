@@ -1,7 +1,17 @@
 """SVG to Android WebP converter — pure conversion logic, no UI dependency."""
+import os
 import re
 import shutil
+import subprocess
 import xml.etree.ElementTree as ET
+
+DENSITIES = [
+    ("mdpi",     2, 3),
+    ("hdpi",     1, 1),
+    ("xhdpi",    4, 3),
+    ("xxhdpi",   2, 1),
+    ("xxxhdpi",  8, 3),
+]
 
 
 def check_dependencies():
@@ -47,3 +57,67 @@ def detect_dimensions(svg_path):
             pass
 
     raise ValueError("Could not detect SVG dimensions.")
+
+
+def convert(svg_path, icon_name, module_path):
+    """
+    Converts svg_path to WebP for all 5 Android densities.
+    SVG dimensions treated as hdpi (1.5x) baseline.
+    Raises RuntimeError on any failure.
+    """
+    missing = check_dependencies()
+    if missing:
+        raise RuntimeError(
+            f"Error: missing required tools: {' '.join(missing)}\n"
+            f"Install with: brew install {' '.join(missing)}"
+        )
+
+    if not os.path.isfile(svg_path):
+        raise RuntimeError(f"Error: SVG file not found: {svg_path}")
+
+    if not os.path.isdir(module_path):
+        raise RuntimeError(f"Error: Module path not found: {module_path}")
+
+    try:
+        width, height = detect_dimensions(svg_path)
+    except ValueError as e:
+        raise RuntimeError(str(e))
+
+    res_dir = os.path.join(module_path, "src", "main", "res")
+
+    for density, num, den in DENSITIES:
+        w = width * num // den
+        h = height * num // den
+        out_dir = os.path.join(res_dir, f"drawable-{density}")
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, f"{icon_name}.webp")
+
+        rsvg = subprocess.run(
+            ["rsvg-convert", "-w", str(w), "-h", str(h), svg_path],
+            capture_output=True,
+        )
+        if rsvg.returncode != 0:
+            raise RuntimeError(rsvg.stderr.decode().strip())
+
+        cwebp = subprocess.run(
+            ["cwebp", "-lossless", "-o", out_path, "--", "-"],
+            input=rsvg.stdout,
+            capture_output=True,
+        )
+        if cwebp.returncode != 0:
+            raise RuntimeError(cwebp.stderr.decode().strip())
+
+    return f"Done! All densities generated for '{icon_name}'."
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 4:
+        print("Usage: python3 converter.py <input.svg> <icon_name> <module_path>")
+        sys.exit(1)
+    try:
+        msg = convert(sys.argv[1], sys.argv[2], sys.argv[3])
+        print(msg)
+    except RuntimeError as e:
+        print(e)
+        sys.exit(1)
