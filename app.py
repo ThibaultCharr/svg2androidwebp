@@ -5,6 +5,7 @@ from AppKit import (
     NSImage, NSImageView, NSImageScaleProportionallyUpOrDown,
     NSView, NSPopUpButton, NSButton,
 )
+import objc
 from Foundation import NSObject
 
 NSOnState = 1
@@ -44,7 +45,7 @@ class _ToggleHandler(NSObject):
     """Handles the 'Use SVG size' checkbox toggle to enable/disable dimension fields."""
 
     def initWithFields_(self, fields):
-        self = super().init()
+        self = objc.super(_ToggleHandler, self).init()
         self._fields = fields
         return self
 
