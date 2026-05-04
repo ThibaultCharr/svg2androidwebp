@@ -11,8 +11,10 @@ macOS menubar app that converts an SVG file into WebP images for all 5 Android d
 ## Run
 
 ```bash
-python3 app.py
+.venv/bin/python3 app.py
 ```
+
+The app appears in the menubar as "SVG→WebP". Click it → "Convert SVG..." for a 3-step wizard: pick an SVG file, enter the icon name, pick the Android module folder.
 
 ## Manual conversion (no UI)
 
