@@ -1,110 +1,105 @@
-# svg2androidwebp menubar app
+# svg2androidwebp — macOS wizard app
 
-import rumps
-import threading
-
-from AppKit import NSApp, NSOpenPanel
+from AppKit import (
+    NSApplication, NSOpenPanel, NSAlert, NSTextField, NSMakeRect,
+)
 
 from converter import convert
 
 
-class SVG2AndroidWebPApp(rumps.App):
-    def __init__(self):
-        super().__init__("SVG→WebP", quit_button=None)
-        self.menu = [
-            rumps.MenuItem("Convert SVG...", callback=self.start_conversion),
-            None,
-            rumps.MenuItem("Quit", callback=rumps.quit_application),
-        ]
-        self._result = None
-        self._result_lock = threading.Lock()
+def _pick_file(title, allowed_types=None, choose_dirs=False, message=None, prompt=None):
+    panel = NSOpenPanel.openPanel()
+    panel.setTitle_(title)
+    if message:
+        panel.setMessage_(message)
+    if prompt:
+        panel.setPrompt_(prompt)
+    panel.setCanChooseFiles_(not choose_dirs)
+    panel.setCanChooseDirectories_(choose_dirs)
+    panel.setAllowsMultipleSelection_(False)
+    if allowed_types:
+        panel.setAllowedFileTypes_(allowed_types)
+    return panel.URL().path() if panel.runModal() == 1 else None
 
-    def start_conversion(self, _):
-        # Step 1: Pick SVG file
-        NSApp.activateIgnoringOtherApps_(True)
-        panel = NSOpenPanel.openPanel()
-        panel.setTitle_("Select SVG file")
-        panel.setAllowedFileTypes_(["svg"])
-        panel.setCanChooseFiles_(True)
-        panel.setCanChooseDirectories_(False)
-        panel.setAllowsMultipleSelection_(False)
-        if panel.runModal() != 1:
-            return
-        svg_path = panel.URL().path()
 
-        # Step 2: Get icon name
-        NSApp.activateIgnoringOtherApps_(True)
-        response = rumps.Window(
-            title="SVG to Android WebP",
-            message="Icon name (lowercase letters, digits, underscores):",
-            ok="Next",
-            cancel="Cancel",
-            dimensions=(320, 24),
-        ).run()
-        if not response.clicked:
-            return
-        icon_name = response.text.strip()
-        if not icon_name:
-            rumps.alert("Error", "Icon name cannot be empty.")
-            return
+def _ask_text(title, message, placeholder=""):
+    alert = NSAlert.alloc().init()
+    alert.setMessageText_(title)
+    alert.setInformativeText_(message)
+    alert.addButtonWithTitle_("Next")
+    alert.addButtonWithTitle_("Cancel")
+    field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 320, 24))
+    if placeholder:
+        field.setPlaceholderString_(placeholder)
+    alert.setAccessoryView_(field)
+    alert.window().setInitialFirstResponder_(field)
+    # NSAlertFirstButtonReturn = 1000
+    return field.stringValue().strip() if alert.runModal() == 1000 else None
 
-        # Step 3: Android module path — type/paste or leave blank to browse
-        NSApp.activateIgnoringOtherApps_(True)
-        response3 = rumps.Window(
-            title="SVG to Android WebP",
-            message="Android module path (e.g. libraries/MyModule/impl)\nLeave blank to choose in Finder:",
-            ok="Next",
-            cancel="Cancel",
-            dimensions=(420, 24),
-        ).run()
-        if not response3.clicked:
-            return
-        module_path = response3.text.strip()
 
-        if not module_path:
-            NSApp.activateIgnoringOtherApps_(True)
-            panel2 = NSOpenPanel.openPanel()
-            panel2.setTitle_("Select Android module folder")
-            panel2.setPrompt_("Select Module")
-            panel2.setMessage_("Choose the Android module folder (the one containing src/main/res/)")
-            panel2.setCanChooseFiles_(False)
-            panel2.setCanChooseDirectories_(True)
-            panel2.setAllowsMultipleSelection_(False)
-            if panel2.runModal() != 1:
-                return
-            module_path = panel2.URL().path()
+def _ask_module_path():
+    alert = NSAlert.alloc().init()
+    alert.setMessageText_("Android Module Path")
+    alert.setInformativeText_(
+        "Type or paste the module path, or leave blank and click Browse to choose in Finder:"
+    )
+    alert.addButtonWithTitle_("Next")    # 1000
+    alert.addButtonWithTitle_("Browse…") # 1001
+    alert.addButtonWithTitle_("Cancel")  # 1002
+    field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 380, 24))
+    field.setPlaceholderString_("e.g. libraries/MyModule/impl")
+    alert.setAccessoryView_(field)
+    alert.window().setInitialFirstResponder_(field)
+    response = alert.runModal()
 
-        # Disable menu item during conversion
-        self.menu["Convert SVG..."].set_callback(None)
-        with self._result_lock:
-            self._result = None
+    if response == 1002:
+        return None
+    typed = field.stringValue().strip()
+    if response == 1000 and typed:
+        return typed
+    # Browse (1001) or Next with empty field → open Finder
+    return _pick_file(
+        "Select Android module folder",
+        choose_dirs=True,
+        message="Choose the Android module folder (containing src/main/res/)",
+        prompt="Select Module",
+    )
 
-        def run():
-            try:
-                msg = convert(svg_path, icon_name, module_path)
-                with self._result_lock:
-                    self._result = ("ok", msg)
-            except Exception as e:
-                with self._result_lock:
-                    self._result = ("err", str(e))
 
-        threading.Thread(target=run, daemon=True).start()
+def _show_result(title, message):
+    alert = NSAlert.alloc().init()
+    alert.setMessageText_(title)
+    alert.setInformativeText_(message)
+    alert.addButtonWithTitle_("OK")
+    alert.runModal()
 
-        # Poll for result on the main thread via timer
-        def check(timer):
-            with self._result_lock:
-                result = self._result
-            if result is None:
-                return
-            timer.stop()
-            self.menu["Convert SVG..."].set_callback(self.start_conversion)
-            if result[0] == "ok":
-                rumps.alert("Done", result[1])
-            else:
-                rumps.alert("Error", result[1])
 
-        rumps.Timer(check, 0.2).start()
+def main():
+    app = NSApplication.sharedApplication()
+    app.activateIgnoringOtherApps_(True)
+
+    svg_path = _pick_file("Select SVG file", allowed_types=["svg"])
+    if not svg_path:
+        return
+
+    icon_name = _ask_text(
+        "Icon Name",
+        "Enter the Android resource name:",
+        placeholder="e.g. ic_home_euro_coin",
+    )
+    if not icon_name:
+        return
+
+    module_path = _ask_module_path()
+    if not module_path:
+        return
+
+    try:
+        msg = convert(svg_path, icon_name, module_path)
+        _show_result("Done", msg)
+    except Exception as e:
+        _show_result("Error", str(e))
 
 
 if __name__ == "__main__":
-    SVG2AndroidWebPApp().run()
+    main()

@@ -8,13 +8,22 @@ macOS menubar app that converts an SVG file into WebP images for all 5 Android d
 - `brew install librsvg webp`
 - `pip install -r requirements.txt`
 
-## Run
+## Run directly
 
 ```bash
 .venv/bin/python3 app.py
 ```
 
-The app appears in the menubar as "SVG→WebP". Click it → "Convert SVG..." for a 3-step wizard: pick an SVG file, enter the icon name, pick the Android module folder.
+A 3-step wizard opens: pick an SVG file → enter the icon name → choose the Android module folder.
+
+## Build a Spotlight-launchable .app
+
+```bash
+pip install py2app
+.venv/bin/python3 setup.py py2app
+# App is at dist/svg2androidwebp.app — move to /Applications for Spotlight
+open dist/svg2androidwebp.app
+```
 
 ## Manual conversion (no UI)
 
