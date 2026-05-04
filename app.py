@@ -78,7 +78,12 @@ def main():
     app = NSApplication.sharedApplication()
     app.activateIgnoringOtherApps_(True)
 
-    svg_path = _pick_file("Select SVG file", allowed_types=["svg"])
+    svg_path = _pick_file(
+        "Select SVG file",
+        allowed_types=["svg"],
+        message="Choose the SVG file to convert to Android WebP density variants.",
+        prompt="Select SVG",
+    )
     if not svg_path:
         return
 
