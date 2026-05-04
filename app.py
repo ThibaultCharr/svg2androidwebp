@@ -48,16 +48,31 @@ class SVG2AndroidWebPApp(rumps.App):
             rumps.alert("Error", "Icon name cannot be empty.")
             return
 
-        # Step 3: Pick Android module directory
+        # Step 3: Android module path — type/paste or leave blank to browse
         NSApp.activateIgnoringOtherApps_(True)
-        panel2 = NSOpenPanel.openPanel()
-        panel2.setTitle_("Select Android module folder")
-        panel2.setCanChooseFiles_(False)
-        panel2.setCanChooseDirectories_(True)
-        panel2.setAllowsMultipleSelection_(False)
-        if panel2.runModal() != 1:
+        response3 = rumps.Window(
+            title="SVG to Android WebP",
+            message="Android module path (e.g. libraries/MyModule/impl)\nLeave blank to choose in Finder:",
+            ok="Next",
+            cancel="Cancel",
+            dimensions=(420, 24),
+        ).run()
+        if not response3.clicked:
             return
-        module_path = panel2.URL().path()
+        module_path = response3.text.strip()
+
+        if not module_path:
+            NSApp.activateIgnoringOtherApps_(True)
+            panel2 = NSOpenPanel.openPanel()
+            panel2.setTitle_("Select Android module folder")
+            panel2.setPrompt_("Select Module")
+            panel2.setMessage_("Choose the Android module folder (the one containing src/main/res/)")
+            panel2.setCanChooseFiles_(False)
+            panel2.setCanChooseDirectories_(True)
+            panel2.setAllowsMultipleSelection_(False)
+            if panel2.runModal() != 1:
+                return
+            module_path = panel2.URL().path()
 
         # Disable menu item during conversion
         self.menu["Convert SVG..."].set_callback(None)
