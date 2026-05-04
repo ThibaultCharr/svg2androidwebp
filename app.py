@@ -53,7 +53,7 @@ class ConversionWindow:
         self.reset_btn.grid_remove()
 
         self.win.columnconfigure(1, weight=1)
-        self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
+        self.win.protocol("WM_DELETE_WINDOW", self._on_close)
         self.win.lift()
         self.win.focus_force()
 
@@ -113,6 +113,10 @@ class ConversionWindow:
         self.result_var.set("")
         self.reset_btn.grid_remove()
         self.convert_btn.config(state="disabled")
+
+    def _on_close(self):
+        self.win.destroy()
+        self.root.quit()
 
     def winfo_exists(self):
         try:

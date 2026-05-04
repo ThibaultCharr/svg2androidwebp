@@ -80,6 +80,11 @@ def convert(svg_path, icon_name, module_path):
 
     if not icon_name or os.sep in icon_name or (os.altsep and os.altsep in icon_name):
         raise RuntimeError(f"Error: invalid icon name: {icon_name!r}")
+    if not re.match(r'^[a-z0-9_.]+$', icon_name):
+        raise RuntimeError(
+            f"Error: invalid icon name {icon_name!r}. "
+            "Use only lowercase letters, digits, underscores, and dots."
+        )
 
     try:
         width, height = detect_dimensions(svg_path)
