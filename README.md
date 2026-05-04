@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon.png" width="128" alt="svg2androidwebp">
+</p>
+
 # svg2androidwebp
 
 macOS menubar app that converts an SVG file into WebP images for all 5 Android density buckets (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi).
