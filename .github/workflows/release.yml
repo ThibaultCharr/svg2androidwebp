@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pyobjc-framework-Cocoa py2app
+
+      - name: Install system dependencies
+        run: |
+          brew install librsvg webp
+
+      - name: Build .app
+        run: |
+          python setup.py py2app
+
+      - name: Zip .app
+        run: |
+          cd dist
+          zip -r svg2androidwebp.zip svg2androidwebp.app
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/svg2androidwebp.zip
+          generate_release_notes: true
