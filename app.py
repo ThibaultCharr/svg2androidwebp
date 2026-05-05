@@ -159,32 +159,33 @@ def _ask_icon_details(svg_path):
     alert.setAccessoryView_(container)
     alert.window().setInitialFirstResponder_(name_field)
 
-    if alert.runModal() != 1000:
-        return None
-
-    icon_name = name_field.stringValue().strip()
-    if not icon_name:
-        _show_result("Error", "Icon name cannot be empty.")
-        return None
-
-    custom_w = custom_h = None
-    if checkbox.state() == NSOffState:
-        w_str = w_field.stringValue().strip()
-        h_str = h_field.stringValue().strip()
-        if not (w_str and h_str):
-            _show_result("Error", "Please enter both width and height.")
-            return None
-        try:
-            custom_w = int(float(w_str))
-            custom_h = int(float(h_str))
-            if custom_w <= 0 or custom_h <= 0:
-                raise ValueError
-        except ValueError:
-            _show_result("Error", "Invalid dimensions. Please enter positive integers.")
+    while True:
+        if alert.runModal() != 1000:
             return None
 
-    baseline = popup.titleOfSelectedItem()
-    return icon_name, custom_w, custom_h, baseline
+        icon_name = name_field.stringValue().strip()
+        if not icon_name:
+            _show_result("Error", "Icon name cannot be empty.")
+            continue
+
+        custom_w = custom_h = None
+        if checkbox.state() == NSOffState:
+            w_str = w_field.stringValue().strip()
+            h_str = h_field.stringValue().strip()
+            if not (w_str and h_str):
+                _show_result("Error", "Please enter both width and height.")
+                continue
+            try:
+                custom_w = int(float(w_str))
+                custom_h = int(float(h_str))
+                if custom_w <= 0 or custom_h <= 0:
+                    raise ValueError
+            except ValueError:
+                _show_result("Error", "Invalid dimensions. Please enter positive integers.")
+                continue
+
+        baseline = popup.titleOfSelectedItem()
+        return icon_name, custom_w, custom_h, baseline
 
 
 def _ask_module_path():
@@ -243,15 +244,17 @@ def main():
         return
     icon_name, custom_w, custom_h, baseline = result
 
-    module_path = _ask_module_path()
-    if not module_path:
-        return
+    while True:
+        module_path = _ask_module_path()
+        if not module_path:
+            return
 
-    try:
-        msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
-        _show_result("Done", msg)
-    except Exception as e:
-        _show_result("Error", str(e))
+        try:
+            msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
+            _show_result("Done", msg)
+            return
+        except Exception as e:
+            _show_result("Error", str(e))
 
 
 if __name__ == "__main__":
