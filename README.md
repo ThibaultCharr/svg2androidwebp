@@ -27,7 +27,7 @@ The app uses the following Python libraries:
 
 ## Download
 
-Download the latest `svg2androidwebp.zip` from the [Releases](https://github.com/ThibaultCharr/svg2androidwebp/releases) page, unzip it, and move `svg2androidwebp.app` to your `/Applications` folder.
+Download the latest `SVG2AndroidWebP.zip` from the [Releases](https://github.com/ThibaultCharr/svg2androidwebp/releases) page, unzip it, and move `SVG2AndroidWebP.app` to your `/Applications` folder.
 
 > First launch: right-click → Open to bypass Gatekeeper (the app is not signed with an Apple Developer certificate).
 

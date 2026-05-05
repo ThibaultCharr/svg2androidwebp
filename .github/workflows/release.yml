@@ -35,7 +35,7 @@ jobs:
       - name: Zip .app
         run: |
           cd dist
-          zip -r svg2androidwebp.zip svg2androidwebp.app
+          zip -r SVG2AndroidWebP.zip SVG2AndroidWebP.app
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
