@@ -155,13 +155,17 @@ def _ask_icon_details(svg_path):
     alert.setMessageText_("Icon Details")
     alert.setInformativeText_("Configure the Android resource name and conversion settings:")
     alert.addButtonWithTitle_("Next")    # 1000
-    alert.addButtonWithTitle_("Cancel")  # 1001
+    alert.addButtonWithTitle_("Back")    # 1001
+    alert.addButtonWithTitle_("Cancel")  # 1002
     alert.setAccessoryView_(container)
     alert.window().setInitialFirstResponder_(name_field)
 
     while True:
-        if alert.runModal() != 1000:
+        response = alert.runModal()
+        if response == 1002:
             return None
+        if response == 1001:
+            return "BACK"
 
         icon_name = name_field.stringValue().strip()
         if not icon_name:
@@ -196,16 +200,19 @@ def _ask_module_path():
         "Type or paste the path, or leave blank and click Browse to choose in Finder:"
     )
     alert.addButtonWithTitle_("Next")    # 1000
-    alert.addButtonWithTitle_("Browse…") # 1001
-    alert.addButtonWithTitle_("Cancel")  # 1002
+    alert.addButtonWithTitle_("Back")    # 1001
+    alert.addButtonWithTitle_("Browse…") # 1002
+    alert.addButtonWithTitle_("Cancel")  # 1003
     field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 380, 24))
     field.setPlaceholderString_("e.g. libraries/MyModule/impl  (not the res/ folder)")
     alert.setAccessoryView_(field)
     alert.window().setInitialFirstResponder_(field)
     response = alert.runModal()
 
-    if response == 1002:
+    if response == 1003:
         return None
+    if response == 1001:
+        return "BACK"
     typed = field.stringValue().strip()
     if response == 1000 and typed:
         return typed
@@ -239,22 +246,42 @@ def main():
     if not svg_path:
         return
 
-    result = _ask_icon_details(svg_path)
-    if result is None:
-        return
-    icon_name, custom_w, custom_h, baseline = result
+    step = 1
+    icon_name = custom_w = custom_h = baseline = None
 
     while True:
-        module_path = _ask_module_path()
-        if not module_path:
-            return
+        if step == 1:
+            result = _ask_icon_details(svg_path)
+            if result is None:
+                return
+            if result == "BACK":
+                # Step 1 is the first step after SVG pick — go back to SVG picker
+                svg_path = _pick_file(
+                    "Select SVG file",
+                    allowed_types=["svg"],
+                    message="Choose the SVG file to convert to Android WebP density variants.",
+                    prompt="Select SVG",
+                )
+                if not svg_path:
+                    return
+                continue
+            icon_name, custom_w, custom_h, baseline = result
+            step = 2
 
-        try:
-            msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
-            _show_result("Done", msg)
-            return
-        except Exception as e:
-            _show_result("Error", str(e))
+        if step == 2:
+            module_path = _ask_module_path()
+            if module_path is None:
+                return
+            if module_path == "BACK":
+                step = 1
+                continue
+
+            try:
+                msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
+                _show_result("Done", msg)
+                return
+            except Exception as e:
+                _show_result("Error", str(e))
 
 
 if __name__ == "__main__":
