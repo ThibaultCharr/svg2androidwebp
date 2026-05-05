@@ -1,14 +1,11 @@
 """SVG to Android WebP converter — pure conversion logic, no UI dependency."""
+import io
 import os
 import re
-import shutil
-import subprocess
 import xml.etree.ElementTree as ET
 
-# Ensure Homebrew paths are visible when launched from Spotlight/Finder
-for _p in ("/opt/homebrew/bin", "/usr/local/bin"):
-    if _p not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = _p + ":" + os.environ.get("PATH", "")
+import cairosvg
+from PIL import Image
 
 # Density scale factors relative to mdpi (1x baseline)
 DENSITY_SCALES = {
@@ -23,12 +20,16 @@ BASELINES = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]
 
 
 def check_dependencies():
-    """Returns a list of missing tool names, empty if all present."""
+    """Returns a list of missing Python packages, empty if all present."""
     missing = []
-    if not shutil.which("rsvg-convert"):
-        missing.append("librsvg")
-    if not shutil.which("cwebp"):
-        missing.append("webp")
+    try:
+        import cairosvg  # noqa: F401
+    except ImportError:
+        missing.append("cairosvg")
+    try:
+        from PIL import Image  # noqa: F401
+    except ImportError:
+        missing.append("Pillow")
     return missing
 
 
@@ -77,8 +78,8 @@ def convert(svg_path, icon_name, module_path, width=None, height=None, baseline=
     missing = check_dependencies()
     if missing:
         raise RuntimeError(
-            f"Error: missing required tools: {' '.join(missing)}\n"
-            f"Install with: brew install {' '.join(missing)}"
+            f"Error: missing required Python packages: {' '.join(missing)}\n"
+            f"Install with: pip install {' '.join(missing)}"
         )
 
     if not os.path.isfile(svg_path):
@@ -114,20 +115,9 @@ def convert(svg_path, icon_name, module_path, width=None, height=None, baseline=
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{icon_name}.webp")
 
-        rsvg = subprocess.run(
-            ["rsvg-convert", "-w", str(w), "-h", str(h), svg_path],
-            capture_output=True,
-        )
-        if rsvg.returncode != 0:
-            raise RuntimeError(rsvg.stderr.decode().strip() or f"rsvg-convert failed (exit {rsvg.returncode})")
-
-        cwebp = subprocess.run(
-            ["cwebp", "-lossless", "-o", out_path, "--", "-"],
-            input=rsvg.stdout,
-            capture_output=True,
-        )
-        if cwebp.returncode != 0:
-            raise RuntimeError(cwebp.stderr.decode().strip() or f"cwebp failed (exit {cwebp.returncode})")
+        png_bytes = cairosvg.svg2png(url=svg_path, output_width=w, output_height=h)
+        img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+        img.save(out_path, "WEBP", lossless=True)
 
     return f"Done! All densities generated for '{icon_name}'."
 

@@ -7,22 +7,13 @@ A macOS tool that takes a single SVG file and converts it into WebP images for a
 
 It comes in two forms: a native macOS wizard app you can launch from Spotlight, and a command-line script for scripting or CI use.
 
-## Requirements
-
-The following tools must be installed on the machine running the app or script:
-
-```bash
-brew install librsvg webp
-```
-
-- **librsvg** — used to rasterize the SVG to PNG at each target resolution
-- **webp** — used to encode the rasterized image as a lossless WebP file
-
 ## Dependencies
 
 The app uses the following Python libraries:
 
 - **pyobjc-framework-Cocoa** — native macOS UI (file pickers, dialogs)
+- **cairosvg** — rasterizes the SVG at each target resolution
+- **Pillow** — encodes the rasterized image as a lossless WebP file
 - **xml.etree.ElementTree** (stdlib) — parses the SVG to extract width, height, and viewBox
 
 ## Download
