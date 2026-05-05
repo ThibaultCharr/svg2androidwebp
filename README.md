@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="icon.png" width="128" alt="SVG2AndroidWebP">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="icon_dark.png">
+    <img src="icon.png" width="128" alt="SVG2AndroidWebP">
+  </picture>
 </p>
 
 # SVG2AndroidWebP
