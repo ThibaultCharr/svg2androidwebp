@@ -35,19 +35,8 @@ svg2androidwebp <input.svg> <icon_name> <module_path> [options]
 
 ## CLI — Manual
 
-Clone the repo and run `converter.py` directly. One of the following backends must be available:
+Clone the repo and run `converter.py` directly. Either `pip install cairosvg Pillow` or `brew install librsvg webp` must be available.
 
-**Option A — Python libraries:**
-```bash
-pip install cairosvg Pillow
-```
-
-**Option B — Homebrew tools:**
-```bash
-brew install librsvg webp
-```
-
-Then:
 ```bash
 python3 converter.py <input.svg> <icon_name> <module_path> [options]
 ```
