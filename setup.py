@@ -7,8 +7,8 @@ OPTIONS = {
     "packages": ["converter"],
     "includes": ["pyexpat"],
     "plist": {
-        "CFBundleName": "svg2androidwebp",
-        "CFBundleDisplayName": "svg2androidwebp",
+        "CFBundleName": "SVG2AndroidWebP",
+        "CFBundleDisplayName": "SVG2AndroidWebP",
         "CFBundleIdentifier": "com.thibaultcharr.svg2androidwebp",
         "CFBundleVersion": "1.0.0",
         "LSUIElement": False,
