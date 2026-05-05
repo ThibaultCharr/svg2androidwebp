@@ -1,5 +1,8 @@
 # svg2androidwebp — macOS wizard app
 
+import json
+import os
+
 from AppKit import (
     NSApplication, NSOpenPanel, NSAlert, NSTextField, NSMakeRect,
     NSImage, NSImageView, NSImageScaleProportionallyUpOrDown,
@@ -14,6 +17,26 @@ NSOffState = 0
 from converter import convert, BASELINES
 
 PREVIEW_H = 160
+
+_PREFS_PATH = os.path.expanduser(
+    "~/Library/Preferences/com.thibaultcharr.svg2androidwebp.json"
+)
+
+
+def _load_prefs():
+    try:
+        with open(_PREFS_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_prefs(prefs):
+    try:
+        with open(_PREFS_PATH, "w") as f:
+            json.dump(prefs, f)
+    except Exception:
+        pass
 
 
 def _pick_file(title, allowed_types=None, choose_dirs=False, message=None, prompt=None):
@@ -192,36 +215,68 @@ def _ask_icon_details(svg_path):
         return icon_name, custom_w, custom_h, baseline
 
 
+class _BrowseHandler(NSObject):
+    """Opens a folder picker and writes the chosen path into a text field."""
+
+    def initWithField_(self, field):
+        self = objc.super(_BrowseHandler, self).init()
+        self._field = field
+        return self
+
+    def browse_(self, sender):
+        path = _pick_file(
+            "Select Android module folder",
+            choose_dirs=True,
+            message="Choose the module root folder — the one that contains src/main/res/",
+            prompt="Select Module",
+        )
+        if path:
+            self._field.setStringValue_(path)
+
+
 def _ask_module_path():
     alert = NSAlert.alloc().init()
     alert.setMessageText_("Android Module Root")
     alert.setInformativeText_(
-        "Select the module root folder (the one that contains src/main/res/).\n"
-        "Type or paste the path, or leave blank and click Browse to choose in Finder:"
+        "Select the module root folder (the one that contains src/main/res/)."
     )
-    alert.addButtonWithTitle_("Next")    # 1000
+    alert.addButtonWithTitle_("Convert") # 1000
     alert.addButtonWithTitle_("Back")    # 1001
-    alert.addButtonWithTitle_("Browse…") # 1002
-    alert.addButtonWithTitle_("Cancel")  # 1003
-    field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 380, 24))
-    field.setPlaceholderString_("e.g. libraries/MyModule/impl  (not the res/ folder)")
-    alert.setAccessoryView_(field)
+    alert.addButtonWithTitle_("Cancel")  # 1002
+
+    # Accessory view: path field (2-line) + Browse button side by side
+    FIELD_H = 42
+    container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 380, FIELD_H))
+    field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 290, FIELD_H))
+    field.setPlaceholderString_("e.g. libraries/MyModule/impl")
+    field.cell().setWraps_(True)
+    field.cell().setScrollable_(False)
+    last_path = _load_prefs().get("last_module_path", "")
+    if last_path:
+        field.setStringValue_(last_path)
+    container.addSubview_(field)
+
+    browse_btn = NSButton.alloc().initWithFrame_(NSMakeRect(298, (FIELD_H - 24) // 2, 82, 24))
+    browse_btn.setTitle_("Browse…")
+    browse_btn.setBezelStyle_(1)  # NSRoundedBezelStyle
+    container.addSubview_(browse_btn)
+
+    alert.setAccessoryView_(container)
     alert.window().setInitialFirstResponder_(field)
+
+    # Wire Browse button to open folder picker via a handler
+    browse_handler = _BrowseHandler.alloc().initWithField_(field)
+    browse_btn.setTarget_(browse_handler)
+    browse_btn.setAction_("browse:")
+
     response = alert.runModal()
 
-    if response == 1003:
+    if response == 1002:
         return None
     if response == 1001:
         return "BACK"
     typed = field.stringValue().strip()
-    if response == 1000 and typed:
-        return typed
-    return _pick_file(
-        "Select Android module folder",
-        choose_dirs=True,
-        message="Choose the module root folder — the one that contains src/main/res/ (do NOT select the res/ folder itself)",
-        prompt="Select Module",
-    )
+    return typed if typed else None
 
 
 def _show_result(title, message):
@@ -278,6 +333,9 @@ def main():
 
             try:
                 msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
+                prefs = _load_prefs()
+                prefs["last_module_path"] = module_path
+                _save_prefs(prefs)
                 _show_result("Done", msg)
                 return
             except Exception as e:
