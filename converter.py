@@ -116,7 +116,7 @@ def detect_dimensions(svg_path):
     raise ValueError("Could not detect SVG dimensions.")
 
 
-def convert(svg_path, icon_name, module_path, width=None, height=None, baseline="mdpi"):
+def convert(svg_path, icon_name, module_path, width=None, height=None, baseline="mdpi", night=False):
     """
     Converts svg_path to WebP for all 5 Android densities.
     width/height: source dimensions in px (detected from SVG if not provided).
@@ -156,12 +156,14 @@ def convert(svg_path, icon_name, module_path, width=None, height=None, baseline=
     for density, scale in DENSITY_SCALES.items():
         w = max(1, round(width * scale / baseline_scale))
         h = max(1, round(height * scale / baseline_scale))
-        out_dir = os.path.join(res_dir, f"drawable-{density}")
+        folder = f"drawable-night-{density}" if night else f"drawable-{density}"
+        out_dir = os.path.join(res_dir, folder)
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{icon_name}.webp")
         _render_svg(svg_path, w, h, out_path)
 
-    return f"Done! All densities generated for '{icon_name}'."
+    mode = "night " if night else ""
+    return f"Done! All {mode}densities generated for '{icon_name}'."
 
 
 if __name__ == "__main__":

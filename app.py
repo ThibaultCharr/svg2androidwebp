@@ -16,7 +16,7 @@ NSOffState = 0
 
 from converter import convert, BASELINES
 
-PREVIEW_H = 160
+PREVIEW_H = 80
 
 _PREFS_PATH = os.path.expanduser(
     "~/Library/Preferences/com.thibaultcharr.svg2androidwebp.json"
@@ -78,6 +78,50 @@ class _ToggleHandler(NSObject):
             f.setEnabled_(enabled)
 
 
+class _DarkSVGHandler(NSObject):
+    """Opens an SVG file picker and updates the preview area with both images."""
+
+    def initWithSources_(self, sources):
+        self = objc.super(_DarkSVGHandler, self).init()
+        self._light_img_view, self._dark_img_view, self._dark_label, self._remove_btn, self._dark_btn, self._preview_y, self._state = sources
+        return self
+
+    def pick_(self, sender):
+        path = _pick_file(
+            "Select dark mode SVG",
+            allowed_types=["svg"],
+            message="Choose the dark mode SVG file.",
+            prompt="Select SVG",
+        )
+        if not path:
+            return
+        self._state["dark_svg_path"] = path
+        image = NSImage.alloc().initWithContentsOfFile_(path)
+        if image:
+            W = 420
+            HALF = (W - 4) // 2
+            y = self._preview_y
+            self._light_img_view.setFrame_(NSMakeRect(0, y, HALF, PREVIEW_H))
+            self._dark_img_view.setFrame_(NSMakeRect(HALF + 4, y, HALF, PREVIEW_H))
+            self._dark_img_view.setImage_(image)
+            self._dark_img_view.setImageScaling_(NSImageScaleProportionallyUpOrDown)
+            self._dark_img_view.setHidden_(False)
+            self._dark_label.setHidden_(False)
+            self._remove_btn.setFrame_(NSMakeRect(HALF + 4 + HALF - 36, y + PREVIEW_H - 36, 36, 36))
+            self._remove_btn.setHidden_(False)
+            self._dark_btn.setTitle_("Edit dark mode")
+
+    def remove_(self, sender):
+        W = 420
+        y = self._preview_y
+        self._light_img_view.setFrame_(NSMakeRect(0, y, W, PREVIEW_H))
+        self._dark_img_view.setHidden_(True)
+        self._dark_label.setHidden_(True)
+        self._remove_btn.setHidden_(True)
+        self._dark_btn.setTitle_("+ Dark mode")
+        self._state["dark_svg_path"] = None
+
+
 class _PreviewHandler(NSObject):
     """Shows a summary of output sizes for each density."""
 
@@ -112,8 +156,8 @@ class _PreviewHandler(NSObject):
 
 def _ask_icon_details(svg_path):
     """
-    Single dialog: SVG preview, icon name, dimension toggle + fields, baseline.
-    Returns (icon_name, width, height, baseline) or None if cancelled.
+    Single dialog: SVG preview, icon name, dark mode button, dimension toggle + fields, baseline.
+    Returns (icon_name, dark_svg_path, width, height, baseline) or None/BACK.
     width/height are None when 'Use SVG size' is checked.
     """
     from converter import detect_dimensions
@@ -128,6 +172,7 @@ def _ask_icon_details(svg_path):
     GAP = 8
     FIELD_H = 24
     LABEL_H = 18
+    dark_state = {"dark_svg_path": None}
 
     # Layout: build from bottom (y=0) upward
     y = 0
@@ -150,13 +195,13 @@ def _ask_icon_details(svg_path):
     name_field_y = y
     y += FIELD_H + GAP
 
-    # Preview (top)
+    # Preview (top) — used for light only or side-by-side
     preview_y = y
     y += PREVIEW_H
 
     container = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W, y))
 
-    # SVG preview
+    # Light SVG preview (full width by default, shrinks when dark is added)
     img_view = NSImageView.alloc().initWithFrame_(NSMakeRect(0, preview_y, W, PREVIEW_H))
     image = NSImage.alloc().initWithContentsOfFile_(svg_path)
     if image:
@@ -164,11 +209,41 @@ def _ask_icon_details(svg_path):
         img_view.setImageScaling_(NSImageScaleProportionallyUpOrDown)
     container.addSubview_(img_view)
 
-    # Icon name
-    container.addSubview_(_make_label("Icon name:", 0, name_label_y, W, LABEL_H))
-    name_field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, name_field_y, W, FIELD_H))
+    # Dark SVG preview (hidden until picked)
+    dark_img_view = NSImageView.alloc().initWithFrame_(NSMakeRect(0, preview_y, 0, PREVIEW_H))
+    dark_img_view.setHidden_(True)
+    container.addSubview_(dark_img_view)
+
+    # "Dark" label above dark preview (hidden until picked)
+    dark_label = _make_label("Dark", W // 2 + 2, preview_y + PREVIEW_H - LABEL_H, W // 2, LABEL_H)
+    dark_label.setHidden_(True)
+    container.addSubview_(dark_label)
+
+    # Remove button (×) in top-right corner of dark preview (hidden until picked)
+    remove_btn = NSButton.alloc().initWithFrame_(NSMakeRect(W - 36, preview_y + PREVIEW_H - 36, 36, 36))
+    remove_btn.setTitle_("✕")
+    remove_btn.setBezelStyle_(1)
+    remove_btn.setHidden_(True)
+    container.addSubview_(remove_btn)
+
+    # Icon name label above field, dark mode button to the right
+    container.addSubview_(_make_label("Icon name:", 0, name_label_y, 100, LABEL_H))
+    name_field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, name_field_y, 300, FIELD_H))
     name_field.setPlaceholderString_("e.g. ic_home_euro_coin")
     container.addSubview_(name_field)
+
+    dark_btn = NSButton.alloc().initWithFrame_(NSMakeRect(308, name_field_y, 112, FIELD_H))
+    dark_btn.setTitle_("+ Dark mode")
+    dark_btn.setBezelStyle_(1)
+    container.addSubview_(dark_btn)
+
+    dark_handler = _DarkSVGHandler.alloc().initWithSources_(
+        (img_view, dark_img_view, dark_label, remove_btn, dark_btn, preview_y, dark_state)
+    )
+    dark_btn.setTarget_(dark_handler)
+    dark_btn.setAction_("pick:")
+    remove_btn.setTarget_(dark_handler)
+    remove_btn.setAction_("remove:")
 
     # "Use SVG size" checkbox (checked = use SVG, unchecked = manual)
     checkbox = NSButton.alloc().initWithFrame_(NSMakeRect(0, checkbox_y, W, FIELD_H))
@@ -255,7 +330,7 @@ def _ask_icon_details(svg_path):
                 continue
 
         baseline = popup.titleOfSelectedItem()
-        return icon_name, custom_w, custom_h, baseline
+        return icon_name, dark_state["dark_svg_path"], custom_w, custom_h, baseline
 
 
 class _BrowseHandler(NSObject):
@@ -363,7 +438,7 @@ def main():
                 if not svg_path:
                     return
                 continue
-            icon_name, custom_w, custom_h, baseline = result
+            icon_name, dark_svg_path, custom_w, custom_h, baseline = result
             step = 2
 
         if step == 2:
@@ -376,6 +451,8 @@ def main():
 
             try:
                 msg = convert(svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline)
+                if dark_svg_path:
+                    convert(dark_svg_path, icon_name, module_path, width=custom_w, height=custom_h, baseline=baseline, night=True)
                 prefs = _load_prefs()
                 prefs["last_module_path"] = module_path
                 _save_prefs(prefs)
