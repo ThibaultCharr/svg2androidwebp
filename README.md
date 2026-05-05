@@ -9,12 +9,19 @@ It comes in two forms: a native macOS wizard app you can launch from Spotlight, 
 
 ## Dependencies
 
-The app uses the following Python libraries:
+The GUI app is fully self-contained — no external tools required.
 
-- **pyobjc-framework-Cocoa** — native macOS UI (file pickers, dialogs)
-- **cairosvg** — rasterizes the SVG at each target resolution
-- **Pillow** — encodes the rasterized image as a lossless WebP file
-- **xml.etree.ElementTree** (stdlib) — parses the SVG to extract width, height, and viewBox
+For the CLI script (`converter.py`), one of the following backends must be available:
+
+**Option A — Python libraries (recommended):**
+```bash
+pip install cairosvg Pillow
+```
+
+**Option B — Homebrew tools:**
+```bash
+brew install librsvg webp
+```
 
 ## Download
 

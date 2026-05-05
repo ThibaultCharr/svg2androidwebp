@@ -2,10 +2,21 @@
 import io
 import os
 import re
+import shutil
+import subprocess
 import xml.etree.ElementTree as ET
 
-import cairosvg
-from PIL import Image
+try:
+    import cairosvg
+    from PIL import Image
+    _HAVE_PYTHON_LIBS = True
+except ImportError:
+    _HAVE_PYTHON_LIBS = False
+
+# Ensure Homebrew paths are visible when launched from Spotlight/Finder
+for _p in ("/opt/homebrew/bin", "/usr/local/bin"):
+    if _p not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _p + ":" + os.environ.get("PATH", "")
 
 # Density scale factors relative to mdpi (1x baseline)
 DENSITY_SCALES = {
@@ -20,17 +31,43 @@ BASELINES = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]
 
 
 def check_dependencies():
-    """Returns a list of missing Python packages, empty if all present."""
-    missing = []
-    try:
-        import cairosvg  # noqa: F401
-    except ImportError:
-        missing.append("cairosvg")
-    try:
-        from PIL import Image  # noqa: F401
-    except ImportError:
-        missing.append("Pillow")
-    return missing
+    """Returns an error message string if no backend is available, else None."""
+    if _HAVE_PYTHON_LIBS:
+        return None
+    missing_brew = []
+    if not shutil.which("rsvg-convert"):
+        missing_brew.append("librsvg")
+    if not shutil.which("cwebp"):
+        missing_brew.append("webp")
+    if missing_brew:
+        return (
+            f"Missing required tools: {' '.join(missing_brew)}\n"
+            f"Install with: brew install {' '.join(missing_brew)}\n"
+            f"Or install Python libraries: pip install cairosvg Pillow"
+        )
+    return None
+
+
+def _render_svg(svg_path, w, h, out_path):
+    """Render svg_path at w×h and save as lossless WebP to out_path."""
+    if _HAVE_PYTHON_LIBS:
+        png_bytes = cairosvg.svg2png(url=svg_path, output_width=w, output_height=h)
+        img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+        img.save(out_path, "WEBP", lossless=True)
+    else:
+        rsvg = subprocess.run(
+            ["rsvg-convert", "-w", str(w), "-h", str(h), svg_path],
+            capture_output=True,
+        )
+        if rsvg.returncode != 0:
+            raise RuntimeError(rsvg.stderr.decode().strip() or f"rsvg-convert failed (exit {rsvg.returncode})")
+        cwebp = subprocess.run(
+            ["cwebp", "-lossless", "-o", out_path, "--", "-"],
+            input=rsvg.stdout,
+            capture_output=True,
+        )
+        if cwebp.returncode != 0:
+            raise RuntimeError(cwebp.stderr.decode().strip() or f"cwebp failed (exit {cwebp.returncode})")
 
 
 def detect_dimensions(svg_path):
@@ -72,15 +109,12 @@ def convert(svg_path, icon_name, module_path, width=None, height=None, baseline=
     """
     Converts svg_path to WebP for all 5 Android densities.
     width/height: source dimensions in px (detected from SVG if not provided).
-    baseline: which density the source dimensions represent (default: hdpi).
+    baseline: which density the source dimensions represent (default: mdpi).
     Raises RuntimeError on any failure.
     """
-    missing = check_dependencies()
-    if missing:
-        raise RuntimeError(
-            f"Error: missing required Python packages: {' '.join(missing)}\n"
-            f"Install with: pip install {' '.join(missing)}"
-        )
+    err = check_dependencies()
+    if err:
+        raise RuntimeError(err)
 
     if not os.path.isfile(svg_path):
         raise RuntimeError(f"Error: SVG file not found: {svg_path}")
@@ -114,10 +148,7 @@ def convert(svg_path, icon_name, module_path, width=None, height=None, baseline=
         out_dir = os.path.join(res_dir, f"drawable-{density}")
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{icon_name}.webp")
-
-        png_bytes = cairosvg.svg2png(url=svg_path, output_width=w, output_height=h)
-        img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
-        img.save(out_path, "WEBP", lossless=True)
+        _render_svg(svg_path, w, h, out_path)
 
     return f"Done! All densities generated for '{icon_name}'."
 
