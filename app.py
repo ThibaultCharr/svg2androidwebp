@@ -148,7 +148,7 @@ def _ask_icon_details(svg_path):
     popup = NSPopUpButton.alloc().initWithFrame_(NSMakeRect(135, baseline_y, 180, 26))
     for d in BASELINES:
         popup.addItemWithTitle_(d)
-    popup.selectItemWithTitle_("hdpi")
+    popup.selectItemWithTitle_("mdpi")
     container.addSubview_(popup)
 
     alert = NSAlert.alloc().init()

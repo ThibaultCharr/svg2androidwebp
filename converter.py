@@ -62,7 +62,7 @@ def detect_dimensions(svg_path):
     raise ValueError("Could not detect SVG dimensions.")
 
 
-def convert(svg_path, icon_name, module_path, width=None, height=None, baseline="hdpi"):
+def convert(svg_path, icon_name, module_path, width=None, height=None, baseline="mdpi"):
     """
     Converts svg_path to WebP for all 5 Android densities.
     width/height: source dimensions in px (detected from SVG if not provided).
@@ -140,8 +140,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--baseline",
         choices=BASELINES,
-        default="hdpi",
-        help="Density the source dimensions represent (default: hdpi)",
+        default="mdpi",
+        help="Density the source dimensions represent (default: mdpi)",
     )
     args = parser.parse_args()
     try:

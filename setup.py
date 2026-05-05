@@ -5,6 +5,7 @@ OPTIONS = {
     "argv_emulation": False,
     "iconfile": "icon.icns",
     "packages": ["converter"],
+    "includes": ["pyexpat"],
     "plist": {
         "CFBundleName": "svg2androidwebp",
         "CFBundleDisplayName": "svg2androidwebp",

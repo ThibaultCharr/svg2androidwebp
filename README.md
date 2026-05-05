@@ -54,14 +54,14 @@ python3 converter.py <input.svg> <icon_name> <module_path> [options]
 |---|---|---|
 | `--width W` | from SVG | Override source width in px |
 | `--height H` | from SVG | Override source height in px |
-| `--baseline DENSITY` | `hdpi` | Density the source dimensions represent |
+| `--baseline DENSITY` | `mdpi` | Density the source dimensions represent |
 
 `--baseline` accepts: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`
 
 ### Examples
 
 ```bash
-# Read dimensions from SVG, hdpi baseline
+# Read dimensions from SVG, mdpi baseline
 python3 converter.py icon.svg ic_home libraries/Home/impl
 
 # Custom dimensions, xhdpi baseline
