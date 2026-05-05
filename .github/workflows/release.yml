@@ -34,7 +34,32 @@ jobs:
           zip -r SVG2AndroidWebP.zip SVG2AndroidWebP.app
 
       - name: Create GitHub Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/SVG2AndroidWebP.zip
           generate_release_notes: true
+
+      - name: Update Homebrew tap
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          TARBALL_SHA=$(curl -sL "https://github.com/ThibaultCharr/svg2androidwebp/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz" | shasum -a 256 | awk '{print $1}')
+          ZIP_SHA=$(curl -sL "https://github.com/ThibaultCharr/svg2androidwebp/releases/download/${GITHUB_REF_NAME}/SVG2AndroidWebP.zip" | shasum -a 256 | awk '{print $1}')
+
+          git clone https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/ThibaultCharr/homebrew-svg2androidwebp.git tap
+          cd tap
+
+          sed -i '' "s|refs/tags/v[0-9.]*\.tar\.gz|refs/tags/${GITHUB_REF_NAME}.tar.gz|" Formula/svg2androidwebp.rb
+          sed -i '' "/refs\/tags\/v.*\.tar\.gz/{n;s/sha256 \"[a-f0-9]*\"/sha256 \"${TARBALL_SHA}\"/}" Formula/svg2androidwebp.rb
+
+          sed -i '' "s/version \"[0-9.]*\"/version \"${VERSION}\"/" Casks/svg2androidwebp.rb
+          sed -i '' "s/sha256 \"[a-f0-9]*\"/sha256 \"${ZIP_SHA}\"/" Casks/svg2androidwebp.rb
+
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add Formula/svg2androidwebp.rb Casks/svg2androidwebp.rb
+          git commit -m "chore: bump to ${GITHUB_REF_NAME}"
+          git push
