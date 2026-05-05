@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="icon_dark.png">
-    <img src="icon.png" width="128" alt="SVG2AndroidWebP">
+    <source media="(prefers-color-scheme: dark)" srcset="banner_dark.png">
+    <img src="banner_light.png" alt="SVG2AndroidWebP">
   </picture>
 </p>
 
