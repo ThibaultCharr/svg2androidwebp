@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="icon.png" width="128" alt="svg2androidwebp">
+  <img src="icon.png" width="128" alt="SVG2AndroidWebP">
 </p>
 
-# svg2androidwebp
+# SVG2AndroidWebP
 
 A macOS tool that takes a single SVG file and converts it into WebP images for all 5 Android density buckets — mdpi, hdpi, xhdpi, xxhdpi, and xxxhdpi — in one go. It reads the dimensions directly from the SVG, scales them proportionally for each density, and writes the output files into the correct `drawable-<density>` folders inside your Android module.
 
