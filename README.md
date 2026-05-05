@@ -7,11 +7,16 @@ A macOS tool that takes a single SVG file and converts it into WebP images for a
 
 It comes in two forms: a native macOS wizard app you can launch from Spotlight, and a command-line tool installable via Homebrew.
 
-## GUI App
+## GUI App — Homebrew (recommended)
 
-Download the latest `SVG2AndroidWebP.zip` from the [Releases](https://github.com/ThibaultCharr/svg2androidwebp/releases) page, unzip it, and move `SVG2AndroidWebP.app` to your `/Applications` folder.
+```bash
+brew tap ThibaultCharr/svg2androidwebp
+brew install --cask svg2androidwebp
+```
 
 The app is fully self-contained — no external tools required.
+
+Alternatively, download `SVG2AndroidWebP.zip` from the [Releases](https://github.com/ThibaultCharr/svg2androidwebp/releases) page, unzip, and move to `/Applications`.
 
 > First launch: right-click → Open to bypass Gatekeeper (the app is not signed with an Apple Developer certificate).
 
