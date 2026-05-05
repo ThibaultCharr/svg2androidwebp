@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyobjc-framework-Cocoa cairosvg Pillow py2app
+          pip install pyobjc-framework-Cocoa Pillow py2app
 
       - name: Build .app
         run: |

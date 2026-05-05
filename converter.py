@@ -7,11 +7,17 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 try:
-    import cairosvg
-    from PIL import Image
-    _HAVE_PYTHON_LIBS = True
+    from AppKit import NSImage, NSBitmapImageRep, NSGraphicsContext, NSRect, NSZeroPoint, NSSize
+    from Foundation import NSData
+    _HAVE_APPKIT = True
 except ImportError:
-    _HAVE_PYTHON_LIBS = False
+    _HAVE_APPKIT = False
+
+try:
+    from PIL import Image as _PILImage
+    _HAVE_PILLOW = True
+except ImportError:
+    _HAVE_PILLOW = False
 
 # Ensure Homebrew paths are visible when launched from Spotlight/Finder
 for _p in ("/opt/homebrew/bin", "/usr/local/bin"):
@@ -32,7 +38,7 @@ BASELINES = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]
 
 def check_dependencies():
     """Returns an error message string if no backend is available, else None."""
-    if _HAVE_PYTHON_LIBS:
+    if _HAVE_APPKIT and _HAVE_PILLOW:
         return None
     missing_brew = []
     if not shutil.which("rsvg-convert"):
@@ -42,17 +48,22 @@ def check_dependencies():
     if missing_brew:
         return (
             f"Missing required tools: {' '.join(missing_brew)}\n"
-            f"Install with: brew install {' '.join(missing_brew)}\n"
-            f"Or install Python libraries: pip install cairosvg Pillow"
+            f"Install with: brew install {' '.join(missing_brew)}"
         )
     return None
 
 
 def _render_svg(svg_path, w, h, out_path):
     """Render svg_path at w×h and save as lossless WebP to out_path."""
-    if _HAVE_PYTHON_LIBS:
-        png_bytes = cairosvg.svg2png(url=svg_path, output_width=w, output_height=h)
-        img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+    if _HAVE_APPKIT and _HAVE_PILLOW:
+        image = NSImage.alloc().initWithContentsOfFile_(svg_path)
+        if image is None:
+            raise RuntimeError(f"Failed to load SVG: {svg_path}")
+        image.setSize_((w, h))
+        tiff = image.TIFFRepresentation()
+        bitmap = NSBitmapImageRep.imageRepWithData_(tiff)
+        png_data = bitmap.representationUsingType_properties_(4, {})  # NSPNGFileType = 4
+        img = _PILImage.open(io.BytesIO(bytes(png_data))).convert("RGBA")
         img.save(out_path, "WEBP", lossless=True)
     else:
         rsvg = subprocess.run(

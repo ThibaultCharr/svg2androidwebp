@@ -4,7 +4,7 @@ APP = ["app.py"]
 OPTIONS = {
     "argv_emulation": False,
     "iconfile": "icon.icns",
-    "packages": ["converter", "cairosvg", "PIL", "cssselect2", "tinycss2", "defusedxml"],
+    "packages": ["converter", "PIL"],
     "includes": ["pyexpat"],
     "plist": {
         "CFBundleName": "SVG2AndroidWebP",
