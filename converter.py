@@ -128,13 +128,28 @@ def convert(svg_path, icon_name, module_path, width=None, height=None, baseline=
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 4:
-        print("Usage: python3 converter.py <input.svg> <icon_name> <module_path>")
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Convert an SVG to Android WebP density variants."
+    )
+    parser.add_argument("svg", help="Path to the source SVG file")
+    parser.add_argument("icon_name", help="Android resource name (e.g. ic_home_euro_coin)")
+    parser.add_argument("module_path", help="Android module root (e.g. libraries/MyModule/impl)")
+    parser.add_argument("--width", type=int, default=None, help="Override source width in px")
+    parser.add_argument("--height", type=int, default=None, help="Override source height in px")
+    parser.add_argument(
+        "--baseline",
+        choices=BASELINES,
+        default="hdpi",
+        help="Density the source dimensions represent (default: hdpi)",
+    )
+    args = parser.parse_args()
     try:
-        msg = convert(sys.argv[1], sys.argv[2], sys.argv[3])
+        msg = convert(
+            args.svg, args.icon_name, args.module_path,
+            width=args.width, height=args.height, baseline=args.baseline,
+        )
         print(msg)
     except RuntimeError as e:
         print(e)
-        sys.exit(1)
+        import sys; sys.exit(1)

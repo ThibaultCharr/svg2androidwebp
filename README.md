@@ -32,7 +32,19 @@ open dist/svg2androidwebp.app
 ## Manual conversion (no UI)
 
 ```bash
-python3 converter.py input.svg icon_name path/to/android/module
+python3 converter.py input.svg icon_name path/to/android/module [--width W] [--height H] [--baseline DENSITY]
+```
+
+- `--width` / `--height` — override source dimensions in px (default: read from SVG)
+- `--baseline` — density the source dimensions represent: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi` (default: `hdpi`)
+
+Examples:
+```bash
+# Use SVG dimensions, hdpi baseline (default)
+python3 converter.py icon.svg ic_home libraries/Home/impl
+
+# Custom size, xhdpi baseline
+python3 converter.py icon.svg ic_home libraries/Home/impl --width 64 --height 64 --baseline xhdpi
 ```
 
 ## Density scale
