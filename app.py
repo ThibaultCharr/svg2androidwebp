@@ -78,6 +78,38 @@ class _ToggleHandler(NSObject):
             f.setEnabled_(enabled)
 
 
+class _PreviewHandler(NSObject):
+    """Shows a summary of output sizes for each density."""
+
+    def initWithSources_(self, sources):
+        self = objc.super(_PreviewHandler, self).init()
+        self._checkbox, self._w_field, self._h_field, self._popup, self._detected = sources
+        return self
+
+    def preview_(self, sender):
+        from converter import DENSITY_SCALES
+        baseline = self._popup.titleOfSelectedItem()
+
+        if self._checkbox.state() == NSOnState and self._detected:
+            w, h = self._detected
+        else:
+            try:
+                w = int(float(self._w_field.stringValue().strip()))
+                h = int(float(self._h_field.stringValue().strip()))
+            except (ValueError, TypeError):
+                _show_result("Preview", "Enter dimensions first.")
+                return
+
+        baseline_scale = DENSITY_SCALES[baseline]
+        lines = []
+        for density, scale in DENSITY_SCALES.items():
+            dw = max(1, round(w * scale / baseline_scale))
+            dh = max(1, round(h * scale / baseline_scale))
+            lines.append(f"{density:<10} {dw} × {dh} px")
+
+        _show_result("Output sizes", "\n".join(lines))
+
+
 def _ask_icon_details(svg_path):
     """
     Single dialog: SVG preview, icon name, dimension toggle + fields, baseline.
@@ -168,11 +200,22 @@ def _ask_icon_details(svg_path):
 
     # Baseline density
     container.addSubview_(_make_label("Baseline density:", 0, baseline_y + 3, 130, LABEL_H))
-    popup = NSPopUpButton.alloc().initWithFrame_(NSMakeRect(135, baseline_y, 180, 26))
+    popup = NSPopUpButton.alloc().initWithFrame_(NSMakeRect(135, baseline_y, 150, 26))
     for d in BASELINES:
         popup.addItemWithTitle_(d)
     popup.selectItemWithTitle_("mdpi")
     container.addSubview_(popup)
+
+    preview_btn = NSButton.alloc().initWithFrame_(NSMakeRect(293, baseline_y, 127, 26))
+    preview_btn.setTitle_("Preview sizes…")
+    preview_btn.setBezelStyle_(1)
+    container.addSubview_(preview_btn)
+
+    preview_handler = _PreviewHandler.alloc().initWithSources_(
+        (checkbox, w_field, h_field, popup, detected)
+    )
+    preview_btn.setTarget_(preview_handler)
+    preview_btn.setAction_("preview:")
 
     alert = NSAlert.alloc().init()
     alert.setMessageText_("Icon Details")
