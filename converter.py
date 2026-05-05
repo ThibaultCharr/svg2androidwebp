@@ -5,6 +5,11 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 
+# Ensure Homebrew paths are visible when launched from Spotlight/Finder
+for _p in ("/opt/homebrew/bin", "/usr/local/bin"):
+    if _p not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _p + ":" + os.environ.get("PATH", "")
+
 # Density scale factors relative to mdpi (1x baseline)
 DENSITY_SCALES = {
     "mdpi":    1.0,
